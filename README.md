@@ -21,7 +21,7 @@ Output: `mix_fingerprint.json`
 ---
 
 ### `transcribe_mix.py`
-Runs OpenAI's Whisper model locally to generate a timestamped word-level transcript of the audio. Useful for mapping lyrics to exact timestamps, identifying songs in a mix, or building a song timeline.
+Runs OpenAI's Whisper model locally to generate a timestamped transcript of the audio. Useful for mapping lyrics to exact timestamps, identifying songs in a mix, or building a song timeline.
 
 Output: `mix_transcript.txt`
 
@@ -89,10 +89,10 @@ Options from fastest to most accurate: `tiny`, `base`, `small`, `medium`, `large
 These are rough estimates on a modern CPU with 16GB+ RAM. A GPU will be significantly faster.
 
 | File length | mix_fingerprint.py | transcribe_mix.py (small) |
-|-------------|-------------------|--------------------------|
-| 30 min | 5-10 min | 20-40 min |
-| 60 min | 10-20 min | 45-90 min |
-| 90 min | 15-30 min | 90-120 min |
+|-------------|-------------------|--------------------------:|
+| 30 min      | 5-10 min          | 20-40 min                 |
+| 60 min      | 10-20 min         | 45-90 min                 |
+| 90 min      | 15-30 min         | 90-120 min                |
 
 ---
 
@@ -119,8 +119,48 @@ These are rough estimates on a modern CPU with 16GB+ RAM. A GPU will be signific
 
 ---
 
+## Interpreting the output
+
+### mix_fingerprint.json
+
+**Energy curve** — look at `energy_normalized` over time. Values above 80 are peak moments, below 35 are breakdowns or transitions. The gap between your highest and lowest points tells you how dynamic the mix is. A mix that stays between 60-80 the whole time is less interesting than one that swings between 25 and 100.
+
+**Tempo drift** — compare `tempo_start_avg_bpm` vs `tempo_end_avg_bpm` in the overview. A positive drift means the mix speeds up. Even a few BPM over an hour is intentional if it's consistent. Negative drift is rare and usually means the DJ is winding down.
+
+**Key changes** — 90 shifts in 67 minutes is high. 20-30 would be more typical for a mix that stays in a harmonic pocket. High shift counts mean the DJ is prioritizing energy and surprise over harmonic smoothness. Neither is wrong, just different approaches.
+
+**Top transition zones** — the `onsets_per_10sec` values in `top_transition_zones` show where the most is happening at once. High numbers (40+) mean dense layering, drops, or fast edits. Compare these timestamps against your energy curve to see if busy transitions correlate with energy peaks or serve as the mechanism to get there.
+
+**Spectral brightness** — higher `brightness_hz` values mean the mix is tonally brighter (more high-frequency content, think synths and hi-hats dominant). Lower values mean heavier, bassier sections. A brightness dip that matches an energy dip is a double-down on a breakdown. A brightness spike without an energy spike might be a filter sweep or transition effect.
+
+---
+
+### mix_transcript.txt
+
+The transcript works best when you treat it as a search tool rather than reading it top to bottom. Search for a lyric you remember and you get the timestamp. From there you can cross-reference that timestamp against the energy JSON to see what was happening sonically at that moment.
+
+Whisper mishears things, especially when vocals are heavily processed or buried in a mix. If a section looks like gibberish, the audio is probably instrumental or the vocals are too distorted to transcribe cleanly. That's useful information too — it tells you where the DJ stripped back to pure sound.
+
+---
+
+## How to use this without an LLM
+
+The JSON files are plain text and work with anything that can read JSON.
+
+**Spreadsheets** — paste the energy curve data into Excel or Google Sheets and chart it. You get a visual energy map of your mix in about two minutes.
+
+**Any LLM** — upload the JSON to ChatGPT, Claude, Gemini, or similar and ask it to interpret the results. The structured format is readable by any model. Uploading the transcript alongside the JSON lets the model map lyrics to energy moments.
+
+**Python / pandas** — load the JSON directly and do your own analysis. Filter for moments above a certain energy threshold, calculate rolling averages, compare two mixes against each other.
+
+**Comparing mixes** — run multiple files through `mix_fingerprint.py` and compare the overview sections side by side. BPM drift, key shift count, peak energy timing, and onset density give you a quick fingerprint of each DJ's style.
+
+**DJs specifically** — the tempo timeline is useful for understanding your own sets. If your BPM tracking shows inconsistency where you expected locked tempo, you'll see it in the data. The onset density timeline can also help identify transitions that felt busier or cleaner than intended.
+
+---
+
 ## Notes
 
 - Both scripts work on any audio format ffmpeg supports: MP3, WAV, FLAC, M4A, AAC, OGG
 - The `FP16 is not supported on CPU` warning from Whisper is harmless — it falls back to FP32 automatically
-- Whisper is OpenAI's open source transcription model released under the MIT license. Running it locally is free with no usage limits.
+- Whisper is OpenAI's open source transcription model released under the MIT license. Running it locally is free with no usage limits
